@@ -43,6 +43,9 @@ class NotifierManager:
         if notify_cfg.get("serverchan", {}).get("send_key"):
             self.notifiers.append(ServerChanNotifier(notify_cfg["serverchan"]))
 
+        if notify_cfg.get("bark", {}).get("key"):
+            self.notifiers.append(BarkNotifier(notify_cfg["bark"]))
+
         if not self.notifiers:
             logger.info("未配置任何通知渠道，跳过推送")
 
@@ -310,3 +313,47 @@ class ServerChanNotifier(BaseNotifier):
             else:
                 logger.error(f"[ServerChan] 推送失败: {result.get('message')}")
                 return False
+
+
+# ==================== Bark (iOS) ====================
+class BarkNotifier(BaseNotifier):
+    name = "Bark"
+
+    def __init__(self, cfg: dict):
+        self.key = cfg["key"]
+        # 默认使用官方服务器，也支持自建服务器
+        self.server = cfg.get("server", "https://api.day.app").rstrip("/")
+        self.sound = cfg.get("sound", "")
+        self.group = cfg.get("group", "森空岛签到")
+
+    async def send(self, message: str) -> bool:
+        lines = message.split("\n")
+        title = lines[0] if lines else "森空岛签到通知"
+        body = "\n".join(lines[1:]) if len(lines) > 1 else message
+
+        payload = {
+            "device_key": self.key,
+            "title": title,
+            "body": body,
+            "group": self.group,
+        }
+        if self.sound:
+            payload["sound"] = self.sound
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{self.server}/push",
+                    json=payload,
+                    timeout=10,
+                )
+                result = resp.json()
+                if result.get("code") == 200:
+                    logger.info("[Bark] 推送成功")
+                    return True
+                else:
+                    logger.error(f"[Bark] 推送失败: {result.get('message')}")
+                    return False
+        except Exception as e:
+            logger.error(f"[Bark] 推送异常: {e}")
+            return False

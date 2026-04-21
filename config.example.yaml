@@ -81,3 +81,14 @@ notify:
   serverchan:
     # Server酱 SendKey 通道密钥
     send_key: ""
+
+  # ---------- Bark (iOS 推送) ----------
+  bark:
+    # Bark App 中显示的设备密钥（打开 Bark App 即可看到）
+    key: ""
+    # 自建 Bark 服务器地址（使用官方服务器请保持默认或留空）
+    # server: "https://api.day.app"
+    # 推送铃声（可选，例如: "alarm", "minuet"）
+    # sound: ""
+    # 消息分组名称（可选）
+    # group: "森空岛签到"
