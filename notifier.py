@@ -43,6 +43,9 @@ class NotifierManager:
         if notify_cfg.get("serverchan", {}).get("send_key"):
             self.notifiers.append(ServerChanNotifier(notify_cfg["serverchan"]))
 
+        if notify_cfg.get("serverchan3", {}).get("send_key"):
+            self.notifiers.append(ServerChan3Notifier(notify_cfg["serverchan3"]))
+
         bark_cfg = notify_cfg.get("bark", {})
         if bark_cfg.get("key") or bark_cfg.get("device_key") or bark_cfg.get("device_keys"):
             self.notifiers.append(BarkNotifier(bark_cfg))
@@ -377,4 +380,44 @@ class BarkNotifier(BaseNotifier):
                 return True
 
             logger.error(f"[Bark] 推送失败: {result.get('message') or result}")
+            return False
+
+
+# ==================== Server酱³ ====================
+class ServerChan3Notifier(BaseNotifier):
+    name = "ServerChan3"
+
+    def __init__(self, cfg: dict):
+        self.send_key = cfg["send_key"]
+        # 从 sendkey 中提取 uid 以构造 SC3 专属推送地址
+        # sendkey 格式: sctp{uid}t...
+        import re
+        match = re.match(r"sctp(\d+)t", self.send_key)
+        if match:
+            uid = match.group(1)
+            self.url = f"https://{uid}.push.ft07.com/send/{self.send_key}.send"
+        else:
+            # 回退到 Turbo 兼容地址（旧版 SCT key）
+            self.url = f"https://sctapi.ftqq.com/{self.send_key}.send"
+
+    async def send(self, message: str) -> bool:
+        lines = message.split("\n")
+        title = lines[0] if lines else "森空岛签到通知"
+        desp = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+
+        payload = {"title": title, "desp": desp}
+        headers = {"Content-Type": "application/json;charset=utf-8"}
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(self.url, json=payload, headers=headers, timeout=10)
+                result = resp.json()
+                if result.get("code") == 0:
+                    logger.info("[ServerChan3] 推送成功")
+                    return True
+                else:
+                    logger.error(f"[ServerChan3] 推送失败: {result.get('message')}")
+                    return False
+        except Exception as e:
+            logger.error(f"[ServerChan3] 推送异常: {e}")
             return False

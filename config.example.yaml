@@ -82,6 +82,12 @@ notify:
     # Server酱 SendKey 通道密钥
     send_key: ""
 
+  # ---------- Server酱³ ----------
+  serverchan3:
+    # Server酱³ SendKey（格式为 sctp{uid}t...，与 Turbo 版 SCT key 不通用）
+    # 可在 https://sc3.ft07.com/sendkey 获取
+    send_key: ""
+
   # ---------- Bark ----------
   bark:
     # Bark 设备 Key，可在 Bark App 中查看
