@@ -372,15 +372,19 @@ class BarkNotifier(BaseNotifier):
             if value:
                 payload[key] = value
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{self.base_url}/push", json=payload)
-            result = resp.json()
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(f"{self.base_url}/push", json=payload, timeout=10)
+                result = resp.json()
 
-            if resp.status_code == 200 and result.get("code") in (0, 200, None):
-                logger.info("[Bark] 推送成功")
-                return True
+                if resp.status_code == 200 and result.get("code") in (0, 200, None):
+                    logger.info("[Bark] 推送成功")
+                    return True
 
-            logger.error(f"[Bark] 推送失败: {result.get('message') or result}")
+                logger.error(f"[Bark] 推送失败: HTTP {resp.status_code}, {result.get('message') or result}")
+                return False
+        except Exception as e:
+            logger.error(f"[Bark] 推送异常: {e}")
             return False
 
 
