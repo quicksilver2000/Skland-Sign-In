@@ -7,12 +7,15 @@
 
 * Python 3.8 或更高版本
 * 或 Docker 环境
+> 如没有NAS或服务器环境，可以使用`GitHub Actions`签到，但海外网络存在触发森空岛风控的风险（目前未发现），另外使用 GitHub Actions 运行签到脚本存在违反 GitHub ToS 的风险，可能导致 GitHub 账号被封禁，请谨慎使用并自行承担后果。
 
 ## 配置指南
 
 在使用前，请将目录下的 `config.example.yaml` 文件另存为 `config.yaml` 进行配置。
 
 ```bash
+# 拉取代码
+git clone https://github.com/kafuneri/Skland-Sign-In.git && cd Skland-Sign-In
 cp config.example.yaml config.yaml
 
 ```
@@ -38,6 +41,7 @@ cp config.example.yaml config.yaml
 * **企业微信**：通过群机器人 Webhook 推送。
 * **微信服务号**：通过公众号模板消息推送。
 * **Server 酱 (Turbo版)**：通过微信/手机客户端推送。
+* **Bark**：通过 Bark App 推送到 iOS 设备，支持官方服务和自建 Bark Server。
 
 ---
 
@@ -49,7 +53,7 @@ cp config.example.yaml config.yaml
 
 #### 使用 Docker Compose
 
-在项目目录下创建 `docker-compose.yml`（已内置）并运行：
+在项目目录下配置 `docker-compose.yml`（已内置，一般无需修改）并运行：
 
 ```bash
 docker-compose up -d
@@ -67,11 +71,11 @@ docker run -d \
 
 ```
 
+
 ### 方案二：本地直接运行
 
-1. 克隆本项目并安装依赖：
+1. 克隆本项目后安装依赖：
 ```bash
-git clone https://github.com/kafuneri/Skland-Sign-In.git && cd Skland-Sign-In
 pip install -r requirements.txt
 
 ```
@@ -86,13 +90,26 @@ python3 main.py
 
 * 若未签到，则执行签到并获取奖励内容。
 * 若已签到，则跳过。
-* 运行结束后会输出简报，如果配置了通知渠道Qmsg，会发送推送到 QQ。
+* 运行结束后会输出简报，如果配置了相关通知渠道（如 Qmsg、Bark、邮件等），则会发送对应的推送通知。
+
+
+### 方案三：GitHub Actions 自动运行
+
+项目已内置 GitHub Actions 工作流，默认每天北京时间 01:00 自动运行一次，也支持在 GitHub 页面手动触发。
+
+1. 点击页面右上角的 Fork 按钮，将本项目推送到你自己的 GitHub 仓库。
+2. 在仓库页面进入 `Settings` -> `Secrets and variables` -> `Actions`。
+3. 新增 Repository secret，名称填写 `CONFIG_YAML`，内容填写你完整的 `config.yaml` 文件内容。
+4. 进入 `Actions` -> `Skland Sign In`，点击 `Run workflow` 可手动测试运行。
+
+> 注意：GitHub Actions 的 Cron 表达式使用 UTC 时间。默认工作流配置 `0 17 * * *` 对应北京时间次日 01:00。如需修改时间，请编辑 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。
 
 ---
 
 ## 定时任务配置
 
 若使用 Docker 部署，可以通过修改 `config.yaml` 中的 `cron` 字段来自定义执行时间（Cron 表达式）。  
+若使用 GitHub Actions 部署，请修改 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。<br>
 若本地运行，建议配合计划任务实现每日自动运行，网上教程很多，此处不赘述。
 
 ## 运行截图  
