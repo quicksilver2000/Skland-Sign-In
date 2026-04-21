@@ -10,4 +10,6 @@ COPY . .
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
+EXPOSE 8080
+
 ENTRYPOINT ["/entrypoint.sh"]

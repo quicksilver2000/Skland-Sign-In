@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-journal-code me-2"></i>运行日志</h5>
+  <div class="d-flex align-items-center gap-3">
+    <div class="form-check form-switch mb-0">
+      <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+      <label class="form-check-label text-muted small" for="auto-refresh">自动刷新</label>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="clearView()">
+      <i class="bi bi-x-circle me-1"></i>清空显示
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div id="log-box" class="log-box p-3" style="min-height:500px;max-height:75vh;overflow-y:auto;border-radius:.375rem">
+    <span class="text-muted">加载中…</span>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const LVL_COLOR = { ERROR:'#f48771', WARNING:'#cca700', DEBUG:'#888', INFO:'#9cdcfe' };
+let _logs = [];
+let _pinBottom = true;
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const box = document.getElementById('log-box');
+  if (!_logs.length) { box.innerHTML = '<span class="text-muted">暂无日志</span>'; return; }
+  box.innerHTML = _logs.map(l => {
+    const c = LVL_COLOR[l.lvl] || '#d4d4d4';
+    return `<div>[<span style="color:#569cd6">${l.t}</span>] <span style="color:${c}">${l.lvl.padEnd(7)}</span> ${esc(l.msg)}</div>`;
+  }).join('');
+  if (_pinBottom) box.scrollTop = box.scrollHeight;
+}
+
+async function fetchLogs() {
+  const r = await fetch('/api/logs');
+  _logs = await r.json();
+  render();
+}
+
+function clearView() { _logs = []; render(); }
+
+// Detect if user scrolled up
+document.getElementById('log-box').addEventListener('scroll', function() {
+  _pinBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 30;
+});
+
+fetchLogs();
+setInterval(() => { if (document.getElementById('auto-refresh').checked) fetchLogs(); }, 3000);
+</script>
+{% endblock %}

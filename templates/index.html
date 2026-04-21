@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row g-3 mb-3">
+  <!-- Status -->
+  <div class="col-md-4">
+    <div class="card h-100 text-center">
+      <div class="card-body d-flex flex-column justify-content-center py-4">
+        <div id="status-badge" class="mb-2">
+          {% if st.running %}
+          <span class="badge bg-warning text-dark fs-6">
+            <i class="bi bi-arrow-repeat spin me-1"></i>执行中
+          </span>
+          {% else %}
+          <span class="badge bg-success fs-6">
+            <i class="bi bi-check-circle me-1"></i>空闲
+          </span>
+          {% endif %}
+        </div>
+        <div class="text-muted small mt-2">
+          上次执行：<span id="last-time">{{ st.last_time }}</span>
+        </div>
+        <div class="text-muted small">
+          结果：<span id="last-result">{{ st.last_result }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <p class="text-muted small mb-3">任务信息</p>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted"><i class="bi bi-people me-1"></i>账号数</span>
+          <strong id="user-count">{{ user_count }}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span class="text-muted"><i class="bi bi-clock me-1"></i>Cron</span>
+          <code class="small" id="cron-expr">{{ cron }}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column gap-2 justify-content-center">
+        <button id="run-btn" class="btn btn-primary" onclick="doRun()">
+          <i class="bi bi-play-fill me-1"></i>立即执行签到
+        </button>
+        <a href="/config" class="btn btn-outline-secondary">
+          <i class="bi bi-sliders me-1"></i>编辑配置
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent logs -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-terminal me-2"></i>最近日志（最新 20 条）</span>
+    <a href="/logs" class="btn btn-sm btn-outline-secondary">查看全部</a>
+  </div>
+  <div id="log-box" class="log-box p-3" style="max-height:320px;overflow-y:auto">
+    <span class="text-muted">等待日志…</span>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const LVL_COLOR = { ERROR:'#f48771', WARNING:'#cca700', DEBUG:'#888', INFO:'#9cdcfe' };
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderMiniLog(logs) {
+  const box = document.getElementById('log-box');
+  const last = logs.slice(-20);
+  if (!last.length) { box.innerHTML = '<span class="text-muted">暂无日志</span>'; return; }
+  box.innerHTML = last.map(l => {
+    const c = LVL_COLOR[l.lvl] || '#d4d4d4';
+    return `<div>[<span style="color:#569cd6">${l.t}</span>] <span style="color:${c}">${l.lvl.padEnd(7)}</span> ${esc(l.msg)}</div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function updateAll() {
+  try {
+    const [st, logs] = await Promise.all([
+      fetch('/api/status').then(r => r.json()),
+      fetch('/api/logs').then(r => r.json()),
+    ]);
+
+    // Badge
+    const badge = document.getElementById('status-badge');
+    if (st.running) {
+      badge.innerHTML = '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-arrow-repeat spin me-1"></i>执行中</span>';
+    } else {
+      badge.innerHTML = '<span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>空闲</span>';
+    }
+    document.getElementById('last-time').textContent = st.last_time || '-';
+    document.getElementById('last-result').textContent = st.last_result || '-';
+
+    // Run button
+    const btn = document.getElementById('run-btn');
+    btn.disabled = st.running;
+    btn.innerHTML = st.running
+      ? '<span class="spinner-border spinner-border-sm me-1"></span>执行中…'
+      : '<i class="bi bi-play-fill me-1"></i>立即执行签到';
+
+    renderMiniLog(logs);
+  } catch (_) {}
+}
+
+async function doRun() {
+  document.getElementById('run-btn').disabled = true;
+  await fetch('/api/run', { method: 'POST' });
+  updateAll();
+}
+
+updateAll();
+setInterval(updateAll, 3000);
+</script>
+{% endblock %}
