@@ -14,8 +14,8 @@ users:
   - nickname: "我的大号"
     token: "这里填入教程中获取的Token"
 
-  - nickname: "我的小号"
-    token: "这里填入另一个Token"
+#  - nickname: "我的小号"
+#    token: "这里填入另一个Token"
 
 # ======================== 消息推送配置 (Notification Settings) ========================
 # 填写相应渠道的参数即可启用对应推送服务。不需要使用的渠道请保持对应参数为空 ("")。
