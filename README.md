@@ -56,7 +56,7 @@ cp config.example.yaml config.yaml
 在项目目录下配置 `docker-compose.yml`（已内置，一般无需修改）并运行：
 
 ```bash
-docker-compose up -d
+docker compose up -d
 
 ```
 
