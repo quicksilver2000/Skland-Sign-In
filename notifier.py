@@ -43,6 +43,10 @@ class NotifierManager:
         if notify_cfg.get("serverchan", {}).get("send_key"):
             self.notifiers.append(ServerChanNotifier(notify_cfg["serverchan"]))
 
+        sc3_cfg = notify_cfg.get("serverchan3", {})
+        if sc3_cfg.get("send_key") or sc3_cfg.get("send_keys"):
+            self.notifiers.append(ServerChan3Notifier(sc3_cfg))
+
         bark_cfg = notify_cfg.get("bark", {})
         if bark_cfg.get("key") or bark_cfg.get("device_key") or bark_cfg.get("device_keys"):
             self.notifiers.append(BarkNotifier(bark_cfg))
@@ -378,3 +382,56 @@ class BarkNotifier(BaseNotifier):
 
             logger.error(f"[Bark] 推送失败: {result.get('message') or result}")
             return False
+
+
+# ==================== Server酱³ ====================
+class ServerChan3Notifier(BaseNotifier):
+    name = "ServerChan3"
+
+    def __init__(self, cfg: dict):
+        # 支持单个 send_key 或多个 send_keys 列表
+        raw = cfg.get("send_keys") or cfg.get("send_key", "")
+        if isinstance(raw, str):
+            self.send_keys = [k.strip() for k in raw.split(",") if k.strip()]
+        elif isinstance(raw, list):
+            self.send_keys = [str(k).strip() for k in raw if str(k).strip()]
+        else:
+            self.send_keys = []
+
+    @staticmethod
+    def _build_url(send_key: str) -> str:
+        import re
+        match = re.match(r"sctp(\d+)t", send_key)
+        if match:
+            uid = match.group(1)
+            return f"https://{uid}.push.ft07.com/send/{send_key}.send"
+        # 回退到 Turbo 兼容地址（旧版 SCT key）
+        return f"https://sctapi.ftqq.com/{send_key}.send"
+
+    async def send(self, message: str) -> bool:
+        if not self.send_keys:
+            logger.error("[ServerChan3] 未配置 send_key")
+            return False
+
+        lines = message.split("\n")
+        title = lines[0] if lines else "森空岛签到通知"
+        desp = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+        payload = {"title": title, "desp": desp}
+        headers = {"Content-Type": "application/json;charset=utf-8"}
+
+        all_success = True
+        async with httpx.AsyncClient() as client:
+            for key in self.send_keys:
+                try:
+                    url = self._build_url(key)
+                    resp = await client.post(url, json=payload, headers=headers, timeout=10)
+                    result = resp.json()
+                    if result.get("code") == 0:
+                        logger.info(f"[ServerChan3] 推送成功 -> {key[:8]}...")
+                    else:
+                        logger.error(f"[ServerChan3] 推送失败 -> {key[:8]}...: {result.get('message')}")
+                        all_success = False
+                except Exception as e:
+                    logger.error(f"[ServerChan3] 推送异常 -> {key[:8]}...: {e}")
+                    all_success = False
+        return all_success
