@@ -204,7 +204,8 @@ async def api_run(request: Request):
 async def api_status(request: Request):
     if not _authed(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
-    return JSONResponse(_st)
+    cfg = _load_cfg()
+    return JSONResponse({**_st, "user_count": len(cfg.get("users", []))})
 
 
 @app.get("/api/logs")

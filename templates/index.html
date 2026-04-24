@@ -22,10 +22,10 @@
           {% endif %}
         </div>
         <div class="text-muted small mt-2" style="letter-spacing:0.5px;">
-          上次执行：<span id="last-time">{{ st.last_time }}</span>
+          上次执行：<span id="last-time" style="color:var(--text-primary);">{{ st.last_time }}</span>
         </div>
         <div class="text-muted small" style="letter-spacing:0.5px;">
-          结果：<span id="last-result">{{ st.last_result }}</span>
+          结果：<span id="last-result" style="color:var(--text-primary);">{{ st.last_result }}</span>
         </div>
       </div>
     </div>
@@ -41,11 +41,11 @@
       <div class="card-body d-flex flex-column justify-content-center">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <span class="text-muted"><i class="bi bi-people me-2"></i>账号数</span>
-          <span><strong id="user-count">{{ user_count }}</strong></span>
+          <span><strong id="user-count" style="color:var(--yellow);">{{ user_count }}</strong></span>
         </div>
         <div class="d-flex justify-content-between align-items-center">
           <span class="text-muted"><i class="bi bi-clock me-2"></i>Cron</span>
-          <code class="small" id="cron-expr">{{ cron }}</code>
+          <code class="small" id="cron-expr" style="color:var(--yellow);">{{ cron }}</code>
         </div>
       </div>
     </div>
