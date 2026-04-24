@@ -3,5 +3,5 @@ pycryptodome>=3.19.0
 pyyaml
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
-jinja2>=3.1.0
+jinja2>=3.1.5
 python-multipart>=0.0.6
