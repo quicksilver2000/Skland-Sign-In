@@ -112,8 +112,50 @@ python3 main.py
 若使用 GitHub Actions 部署，请修改 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。<br>
 若本地运行，建议配合计划任务实现每日自动运行，网上教程很多，此处不赘述。
 
+## Web 管理面板
+
+本项目附带一个基于 FastAPI 的 Web 管理面板，支持可视化配置、日志查看和手动触发签到。
+
+### 功能特性
+
+- **仪表盘**：查看运行状态、账号数量、定时任务表达式，一键手动签到
+- **配置编辑器**：在线编辑 `config.yaml`，支持语法校验、Ctrl+S 保存
+- **实时日志**：彩色分级日志输出，自动刷新
+- **密码保护**：可选的身份验证
+
+### 启动方式
+
+```bash
+# 设置密码（可选，留空则不设密码）
+export WEB_PASSWORD="your_password"
+# 启动 Web 服务（默认端口 8080）
+python web.py
+```
+
+访问 `http://localhost:8080` 即可打开管理面板。
+
+### Docker 部署（含 Web 面板）
+
+`docker-compose.yml` 已默认启用 Web 面板：
+
+```yaml
+services:
+  skland-sign-in:
+    image: kafuneri/skland-sign-in:latest
+    container_name: skland-sign
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - WEB_PASSWORD=your_password     # 面板登录密码
+    volumes:
+      - ./config.yaml:/app/config.yaml
+```
+
 ## 运行截图  
 <img width="366" height="295" alt="image" src="https://github.com/user-attachments/assets/55ee4bbc-3f3a-4e63-8746-3dcbc059ff90" />
+
+> Web 管理面板截图待补充 — 启动后访问 `http://localhost:8080` 即可查看。
 
 ## 感谢以下项目
 
