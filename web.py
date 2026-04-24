@@ -209,7 +209,9 @@ async def api_run(request: Request):
 
 
 @app.post("/api/internal/run")
-async def api_internal_run():
+async def api_internal_run(request: Request):
+    if request.client.host not in ("127.0.0.1", "::1"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     return await _trigger_run()
 
 
