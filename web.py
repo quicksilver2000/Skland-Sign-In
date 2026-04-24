@@ -70,12 +70,11 @@ app = FastAPI(docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["has_password"] = bool(WEB_PASSWORD)
 
-# Workaround: Jinja2 LRU cache uses weakref.ref(self) in cache key which is
-# unhashable on Python 3.12. Bypass the cache entirely.
+# Bypass Jinja2 LRU cache: weakref.ref(loader) in cache key is unhashable on Python 3.12
 def _nocache_load(self, name, globals):
     if self.loader is None:
         raise TypeError("no loader for this environment specified")
-    return self._load(name, globals)
+    return self.loader.load(self, name, self.make_globals(globals))
 
 _JinjaEnv._load_template = _nocache_load
 
