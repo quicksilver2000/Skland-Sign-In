@@ -66,9 +66,14 @@ _st: dict = {"running": False, "last_time": "-", "last_result": "-"}
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
+VERSION = "2.0.10"
+REPO = "https://github.com/quicksilver2000/Skland-Sign-In"
+
 app = FastAPI(docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["has_password"] = bool(WEB_PASSWORD)
+templates.env.globals["version"] = VERSION
+templates.env.globals["repo_url"] = REPO
 
 # Disable Jinja2 template cache to avoid unhashable weakref.ref in LRU cache key on Python 3.12
 templates.env.cache = None
