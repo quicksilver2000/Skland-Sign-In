@@ -4,32 +4,195 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>登录 - Skland 签到管理</title>
+  <link rel="icon" href="https://raw.githubusercontent.com/Yue-plus/arknights_icons/main/site-icons/icon_skland.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --bg: #f5f5f0;
+      --card-bg: #ffffff;
+      --border-color: #d0d0c8;
+      --text-primary: #1a1a1a;
+      --text-secondary: #777;
+      --input-bg: #ffffff;
+      --icon-filter: brightness(0);
+      --yellow: #d4a800;
+      --yellow-dim: rgba(212,168,0,0.1);
+      --yellow-glow: rgba(212,168,0,0.3);
+      --stripe: rgba(0,0,0,0.02);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0a;
+        --card-bg: #111111;
+        --border-color: #2a2a2a;
+        --text-primary: #e0e0e0;
+        --text-secondary: #888;
+        --input-bg: #0d0d0d;
+        --icon-filter: brightness(0) invert(1);
+        --yellow: #ffd700;
+        --yellow-dim: rgba(255,215,0,0.12);
+        --yellow-glow: rgba(255,215,0,0.25);
+        --stripe: rgba(255,215,0,0.025);
+      }
+    }
+    body {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      transition: background 0.3s;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        45deg, transparent, transparent 20px,
+        var(--stripe) 20px, var(--stripe) 21px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      width: 380px;
+      position: relative;
+      z-index: 1;
+      padding: 36px 32px 32px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 15%; right: 15%;
+      height: 2px;
+      background: var(--yellow);
+      box-shadow: 0 0 20px var(--yellow-glow);
+    }
+    .game-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .game-logos img { height: 32px; opacity: 0.75; filter: var(--icon-filter); }
+    .form-control {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+      padding: 10px 14px;
+    }
+    .form-control:focus {
+      background: var(--input-bg);
+      border-color: var(--yellow);
+      box-shadow: 0 0 0 2px var(--yellow-dim);
+      color: var(--text-primary);
+    }
+    .form-control::placeholder { color: #888; }
+    .btn-login {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background: transparent;
+      border: 2px solid var(--yellow);
+      border-radius: 2px;
+      color: var(--yellow);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 0.85rem;
+      padding: 10px;
+      transition: all 0.25s ease;
+      width: 100%;
+    }
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--yellow);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      z-index: -1;
+    }
+    .btn-login:hover::before { transform: scaleX(1); transform-origin: left; }
+    .btn-login:hover { color: var(--bg); }
+    .btn-login:active { transform: scale(0.96); }
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--yellow);
+      opacity: 0.4;
+      transform: scale(0);
+      animation: ripple-anim 0.6s ease-out;
+      pointer-events: none;
+      z-index: 1;
+    }
+    @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+    .alert-danger {
+      background: rgba(255,68,68,0.08);
+      border: 1px solid rgba(255,68,68,0.25);
+      border-radius: 2px;
+      color: #cc3333;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+    }
+  </style>
 </head>
-<body class="bg-light min-vh-100 d-flex align-items-center justify-content-center">
-  <div class="card shadow-sm" style="width:340px">
-    <div class="card-body p-4">
-      <div class="text-center mb-4">
-        <i class="bi bi-star-fill text-warning fs-2"></i>
-        <h6 class="mt-2 mb-1 fw-bold">森空岛签到管理</h6>
-        <small class="text-muted">请输入密码以继续</small>
-      </div>
-      {% if error %}
-      <div class="alert alert-danger py-2 small mb-3">
-        <i class="bi bi-exclamation-triangle me-1"></i>密码错误，请重试
-      </div>
-      {% endif %}
-      <form method="post" action="/login">
-        <div class="mb-3">
-          <input type="password" name="password" class="form-control"
-            placeholder="密码" autofocus autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn btn-primary w-100">
-          <i class="bi bi-box-arrow-in-right me-1"></i>登录
-        </button>
-      </form>
+<body>
+  <div class="login-card">
+    <div class="game-logos">
+      <img src="https://raw.githubusercontent.com/Yue-plus/endfield_icons/main/svg/endfield-icon-zh.svg"
+           alt="终末地">
+      <img src="https://raw.githubusercontent.com/Yue-plus/arknights_icons/main/site-icons/logo_rhodes_island.svg"
+           alt="罗德岛">
     </div>
+    <div class="text-center mb-4">
+      <img src="https://raw.githubusercontent.com/Yue-plus/arknights_icons/main/site-icons/title_arknights.svg"
+           alt="明日方舟" style="height:24px;opacity:0.8;display:block;margin:0 auto 12px;filter:var(--icon-filter);">
+      <h6 class="mb-1 fw-bold" style="color:var(--yellow);letter-spacing:3px;text-transform:uppercase;font-size:0.8rem;">
+        <i class="bi bi-shield-lock me-1"></i>签到管理系统
+      </h6>
+      <small style="color:var(--text-secondary);letter-spacing:1px;">AUTHORIZATION REQUIRED</small>
+    </div>
+    {% if error %}
+    <div class="alert-danger mb-3">
+      <i class="bi bi-exclamation-triangle me-1"></i>密码错误，请重试
+    </div>
+    {% endif %}
+    <form method="post" action="/login">
+      <div class="mb-3">
+        <input type="password" name="password" class="form-control"
+          placeholder="PASSWORD" autofocus autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login">
+        <i class="bi bi-box-arrow-in-right me-2"></i>登录
+      </button>
+    </form>
   </div>
+<script>
+document.querySelector('.btn-login')?.addEventListener('click', function(e) {
+  const rect = this.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const x = e.clientX - rect.left - size / 2;
+  const y = e.clientY - rect.top - size / 2;
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  this.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+});
+</script>
 </body>
 </html>

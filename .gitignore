@@ -13,6 +13,9 @@ venv/
 env/
 .venv/
 
+# 日志文件
+*.log
+
 # 系统及编辑器生成文件
 .DS_Store
 .vscode/
