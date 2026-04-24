@@ -4,8 +4,15 @@ on:
   push:
     branches:
       - main
+      - feat/viewer-role
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag (e.g. feat-viewer-role)'
+        required: true
+        type: string
 
 jobs:
   build-and-push:
@@ -45,6 +52,10 @@ jobs:
             type=semver,pattern={{major}}
             # 记录完整 commit sha（短）
             type=sha,prefix=sha-
+            # 手动触发时使用指定的 tag
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            # 非 main 分支推送时使用分支名（/ 替换为 -）作为标签
+            type=raw,value=${{ github.ref_name.replace('/', '-') }},enable=${{ github.ref_name != 'main' && github.event_name == 'push' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
