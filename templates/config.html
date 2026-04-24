@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-sliders me-2"></i>配置编辑器</h5>
+  <small class="text-muted">支持 YAML 格式，保存后自动更新定时任务</small>
+</div>
+
+{% if saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="bi bi-check-circle me-2"></i>配置已保存，修改立即生效。
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+  <i class="bi bi-exclamation-triangle me-2"></i><strong>YAML 语法错误，请检查后重新保存：</strong>
+  <pre class="mb-0 mt-2 small">{{ error }}</pre>
+</div>
+{% endif %}
+
+<form method="post" action="/config">
+  <div class="card">
+    <div class="card-body p-0">
+      <textarea id="yaml-area" name="config_text"
+        class="form-control"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off">{{ config_text }}</textarea>
+    </div>
+    <div class="card-footer bg-dark d-flex justify-content-between align-items-center">
+      <small class="text-muted">
+        <i class="bi bi-keyboard me-1"></i>Ctrl+S 快速保存 &nbsp;|&nbsp;
+        <i class="bi bi-info-circle me-1"></i>Tab 键插入两个空格
+      </small>
+      <button type="submit" class="btn btn-primary btn-sm px-3">
+        <i class="bi bi-save me-1"></i>保存配置
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// Ctrl/Cmd+S to save
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    document.querySelector('form').submit();
+  }
+});
+
+// Tab → two spaces
+document.getElementById('yaml-area').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ta = e.target;
+    const s = ta.selectionStart;
+    ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(ta.selectionEnd);
+    ta.selectionStart = ta.selectionEnd = s + 2;
+  }
+});
+</script>
+{% endblock %}

@@ -11,6 +11,11 @@ except:
     print('0 1 * * *')
 ")
 
+WEB_PORT=${WEB_PORT:-8080}
+
+echo "启动 Web 管理界面 (port: ${WEB_PORT})..."
+uvicorn web:app --host 0.0.0.0 --port "${WEB_PORT}" --log-level warning &
+
 echo "定时任务: ${CRON_EXPR}"
 echo "首次执行签到..."
 python3 main.py || true
