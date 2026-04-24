@@ -66,7 +66,7 @@ _st: dict = {"running": False, "last_time": "-", "last_result": "-"}
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
 app = FastAPI(docs_url=None, redoc_url=None)
-templates = Jinja2Templates(directory="templates", cache_size=0)
+templates = Jinja2Templates(directory="templates")
 templates.env.globals["has_password"] = bool(WEB_PASSWORD)
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
