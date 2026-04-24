@@ -110,19 +110,30 @@ def _write_crontab(expr: str) -> None:
 async def _do_sign_in() -> None:
     _st["running"] = True
     logger = logging.getLogger("web")
-    logger.info("手动触发签到开始")
+    logger.info("签到任务开始执行")
     try:
         from main import run_sign_in  # noqa: PLC0415
 
         await run_sign_in()
         _st["last_result"] = "success"
-        logger.info("手动触发签到完成")
+        logger.info("签到任务完成")
     except Exception as exc:
         _st["last_result"] = f"error: {exc}"
         logger.error(f"手动触发签到失败: {exc}")
     finally:
         _st["running"] = False
         _st["last_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+@app.on_event("startup")
+async def _startup():
+    asyncio.create_task(_delayed_first_run())
+
+
+async def _delayed_first_run():
+    await asyncio.sleep(2)
+    _st["last_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await _do_sign_in()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
