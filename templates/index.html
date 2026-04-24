@@ -52,6 +52,7 @@
   </div>
 
   <!-- Action -->
+  {% if is_admin %}
   <div class="col-md-4">
     <div class="card h-100">
       <div class="card-header">
@@ -68,9 +69,22 @@
       </div>
     </div>
   </div>
+  {% endif %}
+</div>
+
+<!-- Per-account status -->
+<div class="card mb-3">
+  <div class="card-header">
+    <img class="header-icon" src="https://raw.githubusercontent.com/Yue-plus/arknights_icons/main/site-icons/icon_user.svg"
+         alt="">账号签到状态
+  </div>
+  <div id="accounts-box" class="card-body p-0">
+    <div class="p-3 text-muted text-center">等待签到结果…</div>
+  </div>
 </div>
 
 <!-- Recent logs -->
+{% if is_admin %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span>
@@ -83,6 +97,7 @@
     <span class="text-muted">等待日志…</span>
   </div>
 </div>
+{% endif %}
 
 {% endblock %}
 {% block scripts %}
@@ -93,6 +108,7 @@ function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/
 
 function renderMiniLog(logs) {
   const box = document.getElementById('log-box');
+  if (!box) return;
   const last = logs.slice(-20);
   if (!last.length) { box.innerHTML = '<span class="text-muted">等待日志…</span>'; return; }
   box.innerHTML = last.map(l => {
@@ -102,11 +118,28 @@ function renderMiniLog(logs) {
   box.scrollTop = box.scrollHeight;
 }
 
+function renderAccounts(accounts) {
+  const box = document.getElementById('accounts-box');
+  if (!accounts || !accounts.length) {
+    box.innerHTML = '<div class="p-3 text-muted text-center">暂无签到数据</div>';
+    return;
+  }
+  box.innerHTML = accounts.map(a => {
+    const gamesHtml = a.games.map(g =>
+      `<span class="badge" style="background:var(--yellow-dim);color:var(--yellow);border:1px solid var(--yellow);font-size:0.72rem;margin-right:6px;margin-bottom:4px;">${esc(g.status)}${g.detail ? esc(g.detail) : ''}</span>`
+    ).join('');
+    return `<div style="border-bottom:1px solid var(--border-color);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="color:var(--yellow);font-weight:600;min-width:100px;">${esc(a.nickname)}</span>
+      <span style="display:flex;flex-wrap:wrap;gap:4px;">${gamesHtml || '<span class="text-muted" style="font-size:0.8rem;">无游戏数据</span>'}</span>
+    </div>`;
+  }).join('');
+}
+
 async function updateAll() {
   try {
     const [st, logs] = await Promise.all([
       fetch('/api/status').then(r => r.json()),
-      fetch('/api/logs').then(r => r.json()),
+      fetch('/api/logs').then(r => r.json()).catch(() => []),
     ]);
 
     const badge = document.getElementById('status-badge');
@@ -119,17 +152,21 @@ async function updateAll() {
     document.getElementById('last-result').textContent = st.last_result || '-';
 
     const btn = document.getElementById('run-btn');
-    btn.disabled = st.running;
-    btn.innerHTML = st.running
-      ? '<span class="spinner-border spinner-border-sm me-1"></span>执行中…'
-      : '<i class="bi bi-play-fill me-1"></i>立即执行签到';
+    if (btn) {
+      btn.disabled = st.running;
+      btn.innerHTML = st.running
+        ? '<span class="spinner-border spinner-border-sm me-1"></span>执行中…'
+        : '<i class="bi bi-play-fill me-1"></i>立即执行签到';
+    }
 
+    renderAccounts(st.accounts);
     renderMiniLog(logs);
   } catch (_) {}
 }
 
 async function doRun() {
-  document.getElementById('run-btn').disabled = true;
+  const btn = document.getElementById('run-btn');
+  if (btn) btn.disabled = true;
   await fetch('/api/run', { method: 'POST' });
   updateAll();
 }

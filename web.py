@@ -2,9 +2,10 @@
 web.py - Skland Sign-In Web Management UI
 
 Environment variables:
-  WEB_PASSWORD  Password to protect the web UI (leave empty to disable auth)
-  WEB_PORT      Port to listen on (default: 8080)
-  WEB_SECRET    HMAC secret for cookie signing (auto-generated if not set)
+  WEB_PASSWORD         Admin password (full access to config / logs)
+  WEB_VIEWER_PASSWORD  Viewer password (dashboard only, no config / logs)
+  WEB_PORT             Port to listen on (default: 8080)
+  WEB_SECRET           HMAC secret for cookie signing (auto-generated if not set)
 """
 
 import asyncio
@@ -28,8 +29,10 @@ from fastapi.templating import Jinja2Templates
 
 CONFIG_PATH = Path("config.yaml")
 WEB_PASSWORD = os.environ.get("WEB_PASSWORD", "")
+WEB_VIEWER_PASSWORD = os.environ.get("WEB_VIEWER_PASSWORD", "")
 _SECRET = os.environ.get("WEB_SECRET", secrets.token_hex(32))
-_COOKIE = "skland_auth"
+_COOKIE_ADMIN = "skland_auth"
+_COOKIE_VIEWER = "skland_viewer"
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 # Set up root logger before anything else so that main.py's basicConfig() is
@@ -62,7 +65,7 @@ _root.addHandler(_BufHandler())
 
 # ── Sign-in state ─────────────────────────────────────────────────────────────
 
-_st: dict = {"running": False, "last_time": "-", "last_result": "-"}
+_st: dict = {"running": False, "last_time": "-", "last_result": "-", "accounts": []}
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
@@ -72,6 +75,7 @@ REPO = "https://github.com/quicksilver2000/Skland-Sign-In"
 app = FastAPI(docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["has_password"] = bool(WEB_PASSWORD)
+templates.env.globals["is_admin"] = False
 templates.env.globals["version"] = VERSION
 templates.env.globals["repo_url"] = REPO
 
@@ -85,11 +89,17 @@ def _make_token(pw: str) -> str:
     return hmac.new(_SECRET.encode(), pw.encode(), hashlib.sha256).hexdigest()
 
 
-def _authed(req: Request) -> bool:
+def _auth_role(req: Request) -> str | None:
     if not WEB_PASSWORD:
-        return True
-    cookie = req.cookies.get(_COOKIE, "")
-    return bool(cookie) and hmac.compare_digest(cookie, _make_token(WEB_PASSWORD))
+        return "admin"
+    c = req.cookies.get(_COOKIE_ADMIN, "")
+    if c and hmac.compare_digest(c, _make_token(WEB_PASSWORD)):
+        return "admin"
+    if WEB_VIEWER_PASSWORD:
+        c = req.cookies.get(_COOKIE_VIEWER, "")
+        if c and hmac.compare_digest(c, _make_token(WEB_VIEWER_PASSWORD)):
+            return "viewer"
+    return None
 
 
 # ── Config/crontab helpers ────────────────────────────────────────────────────
@@ -119,11 +129,13 @@ async def _do_sign_in() -> None:
     try:
         from main import run_sign_in  # noqa: PLC0415
 
-        await run_sign_in()
+        accounts = await run_sign_in()
         _st["last_result"] = "success"
+        _st["accounts"] = accounts or []
         logger.info("签到任务完成")
     except Exception as exc:
         _st["last_result"] = f"error: {exc}"
+        _st["accounts"] = []
         logger.error(f"手动触发签到失败: {exc}")
     finally:
         _st["running"] = False
@@ -146,7 +158,8 @@ async def _delayed_first_run():
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    if not _authed(request):
+    role = _auth_role(request)
+    if role is None:
         return RedirectResponse("/login", 302)
     cfg = _load_cfg()
     return templates.TemplateResponse(
@@ -156,13 +169,14 @@ async def index(request: Request):
             "st": _st,
             "cron": cfg.get("cron", "0 1 * * *"),
             "user_count": len(cfg.get("users", [])),
+            "is_admin": role == "admin",
         },
     )
 
 
 @app.get("/config", response_class=HTMLResponse)
 async def config_get(request: Request, saved: str = ""):
-    if not _authed(request):
+    if _auth_role(request) != "admin":
         return RedirectResponse("/login", 302)
     text = CONFIG_PATH.read_text("utf-8") if CONFIG_PATH.exists() else ""
     return templates.TemplateResponse(
@@ -172,13 +186,14 @@ async def config_get(request: Request, saved: str = ""):
             "config_text": text,
             "saved": saved == "1",
             "error": None,
+            "is_admin": True,
         },
     )
 
 
 @app.post("/config", response_class=HTMLResponse)
 async def config_post(request: Request, config_text: str = Form(...)):
-    if not _authed(request):
+    if _auth_role(request) != "admin":
         return RedirectResponse("/login", 302)
     try:
         parsed = yaml.safe_load(config_text)
@@ -190,6 +205,7 @@ async def config_post(request: Request, config_text: str = Form(...)):
                 "config_text": config_text,
                 "saved": False,
                 "error": str(exc),
+                "is_admin": True,
             },
         )
     CONFIG_PATH.write_text(config_text, "utf-8")
@@ -201,14 +217,14 @@ async def config_post(request: Request, config_text: str = Form(...)):
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
-    if not _authed(request):
+    if _auth_role(request) != "admin":
         return RedirectResponse("/login", 302)
-    return templates.TemplateResponse("logs.html", {"request": request})
+    return templates.TemplateResponse("logs.html", {"request": request, "is_admin": True})
 
 
 @app.post("/api/run")
 async def api_run(request: Request):
-    if not _authed(request):
+    if _auth_role(request) != "admin":
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     return await _trigger_run()
 
@@ -229,15 +245,17 @@ async def _trigger_run():
 
 @app.get("/api/status")
 async def api_status(request: Request):
-    if not _authed(request):
+    role = _auth_role(request)
+    if role is None:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     cfg = _load_cfg()
-    return JSONResponse({**_st, "user_count": len(cfg.get("users", []))})
+    data = {**_st, "user_count": len(cfg.get("users", [])), "is_admin": role == "admin"}
+    return JSONResponse(data)
 
 
 @app.get("/api/logs")
 async def api_logs(request: Request):
-    if not _authed(request):
+    if _auth_role(request) != "admin":
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     return JSONResponse(list(_log_buf))
 
@@ -246,7 +264,7 @@ async def api_logs(request: Request):
 async def login_get(request: Request):
     if not WEB_PASSWORD:
         return RedirectResponse("/", 302)
-    if _authed(request):
+    if _auth_role(request):
         return RedirectResponse("/", 302)
     return templates.TemplateResponse("login.html", {"request": request, "error": False})
 
@@ -255,7 +273,11 @@ async def login_get(request: Request):
 async def login_post(request: Request, password: str = Form(...)):
     if password == WEB_PASSWORD:
         resp = RedirectResponse("/", 303)
-        resp.set_cookie(_COOKIE, _make_token(password), httponly=True, samesite="lax")
+        resp.set_cookie(_COOKIE_ADMIN, _make_token(password), httponly=True, samesite="lax")
+        return resp
+    if WEB_VIEWER_PASSWORD and password == WEB_VIEWER_PASSWORD:
+        resp = RedirectResponse("/", 303)
+        resp.set_cookie(_COOKIE_VIEWER, _make_token(password), httponly=True, samesite="lax")
         return resp
     return templates.TemplateResponse("login.html", {"request": request, "error": True})
 
@@ -263,7 +285,8 @@ async def login_post(request: Request, password: str = Form(...)):
 @app.get("/logout")
 async def logout():
     resp = RedirectResponse("/login", 302)
-    resp.delete_cookie(_COOKIE)
+    resp.delete_cookie(_COOKIE_ADMIN)
+    resp.delete_cookie(_COOKIE_VIEWER)
     return resp
 
 

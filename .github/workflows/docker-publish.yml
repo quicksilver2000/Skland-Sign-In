@@ -54,8 +54,8 @@ jobs:
             type=sha,prefix=sha-
             # 手动触发时使用指定的 tag
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            # 非 main 分支推送时使用分支名（/ 替换为 -）作为标签
-            type=raw,value=${{ github.ref_name.replace('/', '-') }},enable=${{ github.ref_name != 'main' && github.event_name == 'push' }}
+            # 非 main 分支推送时使用分支名作为标签（自动替换 / 为 -）
+            type=ref,event=branch,enable=${{ github.ref_name != 'main' && github.event_name == 'push' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
