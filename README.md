@@ -1,7 +1,7 @@
 # Skland-Sign-In
 
 森空岛自动签到脚本，用于实现森空岛平台下《明日方舟》与《终末地》的每日自动签到。  
-支持多账号管理及多种消息推送渠道。
+支持多账号管理、Web 管理面板及多种消息推送渠道。
 
 ## 环境要求
 
@@ -15,7 +15,7 @@
 
 ```bash
 # 拉取代码
-git clone https://github.com/kafuneri/Skland-Sign-In.git && cd Skland-Sign-In
+git clone https://github.com/quicksilver2000/Skland-Sign-In.git && cd Skland-Sign-In
 cp config.example.yaml config.yaml
 
 ```
@@ -40,46 +40,47 @@ cp config.example.yaml config.yaml
 * **电子邮件 (SMTP)**：支持 QQ、网易等主流邮箱推送。
 * **企业微信**：通过群机器人 Webhook 推送。
 * **微信服务号**：通过公众号模板消息推送。
-* **Server 酱 (Turbo版/Server酱³ )**：通过微信/手机客户端推送。
+* **Server 酱 (Turbo版/Server酱³)**：通过微信/手机客户端推送。
 * **Bark**：通过 Bark App 推送到 iOS 设备，支持官方服务和自建 Bark Server。
 
 ---
 
-## 部署方法
-
-### 方案一：Docker 部署 (推荐)
+## Docker 部署 (推荐)
 
 本项目内置了 Cron 定时任务（默认每天凌晨 01:00 运行），适合 NAS 或服务器环境。
 
-#### 使用 Docker Compose
+### 使用 Docker Compose
 
 在项目目录下配置 `docker-compose.yml`（已内置，一般无需修改）并运行：
 
 ```bash
 docker compose up -d
-
 ```
 
-#### 使用 Docker Run
+启动后访问 `http://<你的IP>:23223` 即可打开 Web 管理面板。
+
+### 使用 Docker Run
 
 ```bash
 docker run -d \
   --name skland-sign \
-  -v $(pwd)/config.yaml:/app/config.yaml:ro \
+  -v $(pwd)/config.yaml:/app/config.yaml \
   -e TZ=Asia/Shanghai \
-  kafuneri/skland-sign-in:latest
+  -e WEB_PASSWORD=your_password \
+  -p 23223:8080 \
+  qrinsan/skland-sign-in:latest
 
 ```
 
+---
 
-### 方案二：本地直接运行
+## 本地直接运行
 
 1. 克隆本项目后安装依赖：
 ```bash
 pip install -r requirements.txt
 
 ```
-
 
 2. 执行签到脚本：
 ```bash
@@ -90,17 +91,25 @@ python3 main.py
 
 * 若未签到，则执行签到并获取奖励内容。
 * 若已签到，则跳过。
-* 运行结束后会输出简报，如果配置了相关通知渠道（如 Qmsg、Bark、邮件等），则会发送对应的推送通知。
+* 运行结束后会输出简报，如果配置了相关通知渠道则会发送对应推送通知。
 
+3. 启动 Web 管理面板（可选）：
+```bash
+export WEB_PASSWORD=your_password
+python web.py
+```
+访问 `http://localhost:8080` 即可打开管理面板。
 
-### 方案三：GitHub Actions 自动运行
+---
+
+## GitHub Actions 自动运行
 
 项目已内置 GitHub Actions 工作流，默认每天北京时间 01:00 自动运行一次，也支持在 GitHub 页面手动触发。
 
 1. 点击页面右上角的 Fork 按钮，将本项目推送到你自己的 GitHub 仓库。
-2. 在仓库页面进入 `Settings` -> `Secrets and variables` -> `Actions`。
+2. 在仓库页面进入 `Settings` → `Secrets and variables` → `Actions`。
 3. 新增 Repository secret，名称填写 `CONFIG_YAML`，内容填写你完整的 `config.yaml` 文件内容。
-4. 进入 `Actions` -> `Skland Sign In`，点击 `Run workflow` 可手动测试运行。
+4. 进入 `Actions` → `Skland Sign In`，点击 `Run workflow` 可手动测试运行。
 
 > 注意：GitHub Actions 的 Cron 表达式使用 UTC 时间。默认工作流配置 `0 17 * * *` 对应北京时间次日 01:00。如需修改时间，请编辑 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。
 
@@ -108,9 +117,9 @@ python3 main.py
 
 ## 定时任务配置
 
-若使用 Docker 部署，可以通过修改 `config.yaml` 中的 `cron` 字段来自定义执行时间（Cron 表达式）。  
-若使用 GitHub Actions 部署，请修改 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。<br>
-若本地运行，建议配合计划任务实现每日自动运行，网上教程很多，此处不赘述。
+* **Docker 部署**：修改 `config.yaml` 中的 `cron` 字段，通过 Web 面板保存后立即生效，无需重启容器。
+* **GitHub Actions**：修改 `.github/workflows/sign-in.yml` 中的 `schedule.cron`。
+* **本地运行**：建议配合系统计划任务实现每日自动运行。
 
 ## Web 管理面板
 
@@ -120,42 +129,28 @@ python3 main.py
 
 - **仪表盘**：查看运行状态、账号数量、定时任务表达式，一键手动签到
 - **配置编辑器**：在线编辑 `config.yaml`，支持语法校验、Ctrl+S 保存
-- **实时日志**：彩色分级日志输出，自动刷新
+- **实时日志**：彩色分级日志输出，自动刷新，首次签到和定时签到日志均在 Web 中可见
 - **密码保护**：可选的身份验证
+- **版本信息**：页面底部显示当前版本号和仓库链接
 
-### 启动方式
-
-```bash
-# 设置密码（可选，留空则不设密码）
-export WEB_PASSWORD="your_password"
-# 启动 Web 服务（默认端口 8080）
-python web.py
-```
-
-访问 `http://localhost:8080` 即可打开管理面板。
-
-### Docker 部署（含 Web 面板）
-
-`docker-compose.yml` 已默认启用 Web 面板：
+### Docker Compose 配置
 
 ```yaml
 services:
   skland-sign-in:
-    image: kafuneri/skland-sign-in:latest
+    image: qrinsan/skland-sign-in:latest
     container_name: skland-sign
     ports:
-      - "8080:8080"
+      - "23223:23223"
     environment:
       - TZ=Asia/Shanghai
-      - WEB_PASSWORD=your_password     # 面板登录密码
+      - WEB_PASSWORD=your_password
+      - WEB_PORT=23223
     volumes:
       - ./config.yaml:/app/config.yaml
 ```
 
-## 运行截图  
-<img width="366" height="295" alt="image" src="https://github.com/user-attachments/assets/55ee4bbc-3f3a-4e63-8746-3dcbc059ff90" />
-
-> Web 管理面板截图待补充 — 启动后访问 `http://localhost:8080` 即可查看。
+---
 
 ## 感谢以下项目
 
