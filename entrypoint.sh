@@ -12,11 +12,12 @@ except:
 ")
 
 WEB_PORT=${WEB_PORT:-8080}
+API="http://localhost:${WEB_PORT}/api/internal/run"
 
 echo "启动 Web 管理界面 (port: ${WEB_PORT})..."
 echo "定时任务: ${CRON_EXPR}"
 
-echo "${CRON_EXPR} cd /app && python3 main.py >> /proc/1/fd/1 2>&1" > /etc/crontabs/root
+echo "${CRON_EXPR} curl -sf -X POST ${API} > /dev/null 2>&1" > /etc/crontabs/root
 
 echo "启动定时任务调度..."
 uvicorn web:app --host 0.0.0.0 --port "${WEB_PORT}" --log-level warning &

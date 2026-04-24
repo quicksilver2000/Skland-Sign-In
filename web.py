@@ -101,7 +101,7 @@ def _write_crontab(expr: str) -> None:
     """Update the Alpine crontab so the new schedule takes effect immediately."""
     p = Path("/etc/crontabs/root")
     if p.exists():
-        p.write_text(f"{expr} cd /app && python3 main.py >> /proc/1/fd/1 2>&1\n")
+        p.write_text(f"{expr} curl -sf -X POST http://localhost:{os.environ.get('WEB_PORT', '8080')}/api/internal/run > /dev/null 2>&1\n")
 
 
 # ── Sign-in runner ────────────────────────────────────────────────────────────
@@ -205,6 +205,15 @@ async def logs_page(request: Request):
 async def api_run(request: Request):
     if not _authed(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return await _trigger_run()
+
+
+@app.post("/api/internal/run")
+async def api_internal_run():
+    return await _trigger_run()
+
+
+async def _trigger_run():
     if _st["running"]:
         return JSONResponse({"status": "already_running"})
     asyncio.create_task(_do_sign_in())
