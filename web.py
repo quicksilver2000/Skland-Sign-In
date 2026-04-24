@@ -22,6 +22,7 @@ import yaml
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from jinja2.environment import Environment as _JinjaEnv
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,15 @@ _st: dict = {"running": False, "last_time": "-", "last_result": "-"}
 app = FastAPI(docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["has_password"] = bool(WEB_PASSWORD)
+
+# Workaround: Jinja2 LRU cache uses weakref.ref(self) in cache key which is
+# unhashable on Python 3.12. Bypass the cache entirely.
+def _nocache_load(self, name, globals):
+    if self.loader is None:
+        raise TypeError("no loader for this environment specified")
+    return self._load(name, globals)
+
+_JinjaEnv._load_template = _nocache_load
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
