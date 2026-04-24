@@ -66,7 +66,7 @@ _st: dict = {"running": False, "last_time": "-", "last_result": "-"}
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
-VERSION = "2.0.10"
+VERSION = "2.1.0"
 REPO = "https://github.com/quicksilver2000/Skland-Sign-In"
 
 app = FastAPI(docs_url=None, redoc_url=None)
